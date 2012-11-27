@@ -3,6 +3,7 @@ setapi('QVariant', 2)
 setapi('QString', 2)
 
 from PyQt4.QtCore import Qt
+from PyQt4.QtGui import QStandardItemModel
 
 from .util import pretty_number
 
@@ -10,7 +11,7 @@ from .util import pretty_number
 class WidgetProperty(object):
     """ Base class for widget properties
 
-    Subclasses implement, at a minimum, the "get" and "set" methods,
+    Subclasses implement, at a minimum, the "getter" and "setter" methods,
     which translate between widget states and python variables
     """
     def __init__(self, att):
@@ -19,7 +20,8 @@ class WidgetProperty(object):
         to wrap around. If the widget is nested inside another variable,
         normal '.' syntax can be used (e.g. 'sub_window.button')
 
-        :type att: str"""
+        :type att: str
+        """
         self._att = att.split('.')
 
     def __get__(self, instance, type=None):
@@ -66,86 +68,103 @@ class FloatLineProperty(WidgetProperty):
 
 
 class ItemProxy(object):
-    def __init__(self, item):
-        self.item = item
+    def __init__(self, model, idx):
+        self.model = model
+        self.idx = idx
 
     @property
     def label(self):
-        return self.item.text()
+        return str(self.model.data(self.idx, Qt.DisplayRole))
 
     @label.setter
     def label(self, value):
-        self.item.setText(value)
+        self.model.setData(self.idx, value, Qt.DisplayRole)
 
     @property
     def data(self):
-        return self.item.data(Qt.UserRole)
+        return self.model.data(self.idx, Qt.UserRole)
 
     @data.setter
     def data(self, value):
-        self.item.setData(Qt.UserRole, value)
+        self.model.setData(self.idx, value, Qt.UserRole)
 
     def __iter__(self):
-        return iter([self.label, self.data])
+        yield self.label
+        yield self.data
 
 
 class ListProxy(object):
-    def __init__(self, widget):
-        self.widget = widget
+    def __init__(self, model):
+        self.model = model
 
     def __getitem__(self, index):
-        item = self.widget.item(index)
-        if item is None:
+        item = self.model.index(index, 0)
+        if not item.isValid():
             raise IndexError("List index out of range")
 
-        return ItemProxy(item)
+        return ItemProxy(self.model, item)
 
     def __len__(self):
-        return self.widget.count()
+        return self.model.rowCount()
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
 
     @property
     def labels(self):
-        return [self.widget.item(i).text() for i in range(self.widget.count())]
+        return [i.label for i in self]
 
     @labels.setter
     def labels(self, values):
         ct = len(self)
         for i, v in enumerate(values):
-            print 'seting text %i to %s' % (i, v)
             if i >= ct:
-                self.widget.addItem(v)
-            else:
-                self[i].text = v
-            assert self.widget.item(i).text() == v
+                self._add_row()
+            self[i].label = v
 
         for i in range(len(values), len(self)):
-            self.widget[i].text = ''
+            self[i].label = ''
 
     @property
     def data(self):
-        return [self[i].data for i in range(len(self))]
+        return [i.data for i in self]
 
     @data.setter
     def data(self, values):
         ct = len(self)
         for i, v in enumerate(values):
             if i >= ct:
-                self.widget.addItem('')
+                self._add_row()
             self[i].data = v
 
         for i in range(len(values), len(self)):
             self[i].data = None
 
+    def _add_row(self):
+        result = self.model.insertRow(len(self))
+        if not result:
+            raise IndexError("Could not add row to model")
+        self[len(self) - 1].label = ''
+
     def pop(self, row):
-        item = self.widget.takeItem(row)
-        if item is None:
-            raise IndexError("List index out of range")
-        return ListProxy(item)
+        result = self[row]
+        r = self.model.removeRows(row, 1)
+        if not r:
+            raise IndexError("Cannot remove frow from model")
+        return result
 
 
 class ListProperty(WidgetProperty):
     def getter(self, widget):
-        return ListProxy(widget)
+        return ListProxy(widget.model())
 
     def setter(self, widget, value):
         raise AttributeError()
+
+class ValueProperty(WidgetProperty):
+    def getter(self, widget):
+        return widget.value()
+
+    def setter(self, widget, value):
+        widget.setValue(value)
