@@ -25,7 +25,7 @@ class Furnace(QWidget):
 	def __init__(self, parent=None):
 	    super(Furnace, self).__init__(parent)
 	    self.thermostat_power_checkbox = QCheckBox()
-	   	...other widgets ...
+	   	...etc...
 ```	   		   
 
 Here, `power` is a qtpy wrapper around the `Furnace.thermostat_power_checkbox`

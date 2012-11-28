@@ -99,6 +99,9 @@ class ItemProxy(object):
         yield self.label
         yield self.data
 
+    def __str__(self):
+        return "%s (data %r)" % (self.label, self.data)
+
 
 class ListProxy(object):
     """Wrapper around list-like Qt model classes.
@@ -183,6 +186,8 @@ class ListProxy(object):
             raise IndexError("Cannot remove frow from model")
         return result
 
+    def __str__(self):
+        return "list with %i elements" % len(self)
 
 class ListProperty(WidgetProperty):
     """Wrapper for widgets with list-like Qt models. This includes:
