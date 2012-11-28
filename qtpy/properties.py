@@ -3,7 +3,6 @@ setapi('QVariant', 2)
 setapi('QString', 2)
 
 from PyQt4.QtCore import Qt
-from PyQt4.QtGui import QStandardItemModel
 
 from .util import pretty_number
 
@@ -68,6 +67,14 @@ class FloatLineProperty(WidgetProperty):
 
 
 class ItemProxy(object):
+    """Interface to a particular row in a list-like Qt model
+
+    Defines 2 attibutes: label and data. These wrap the
+    DisplayRole and UserRole items for a model index
+
+    User's shouldn't have to create ItemProxies directly --
+    they are automatically created from other properties
+    """
     def __init__(self, model, idx):
         self.model = model
         self.idx = idx
@@ -94,6 +101,28 @@ class ItemProxy(object):
 
 
 class ListProxy(object):
+    """Wrapper around list-like Qt model classes.
+
+    Users normally don't create ListProxies directly. Rather, they
+    are automatically created from other properties.
+
+    The basic interface for ListProxy:
+
+    len(p) -> number of rows in the list
+
+    p[i] -> fetches ith row, returns as a
+            :class:`qtpy.properties.itemProxy` instance
+
+    p.laels -> list of strings, giving label for each row
+    p.data -> list of objects, giving user data for each row
+
+    Both labels and data can be reassigned.
+
+    for row in p:   # iterates over each row, using an ItemProxy
+        print row.label, row.data
+
+    p.pop(3) -> remove 3rd row, return removed row as an ItemProxy
+    """
     def __init__(self, model):
         self.model = model
 
@@ -156,13 +185,36 @@ class ListProxy(object):
 
 
 class ListProperty(WidgetProperty):
+    """Wrapper for widgets with list-like Qt models. This includes:
+       * QComboBox
+       * QListView
+       * QListWidget
+       * QHelpIndexWidget
+       * QUndoView
+
+       And any other class with a model() method that returns a
+       list-like Qt model
+
+       Accessing the property returns a ListProxy
+    """
     def getter(self, widget):
         return ListProxy(widget.model())
 
     def setter(self, widget, value):
         raise AttributeError()
 
+
 class ValueProperty(WidgetProperty):
+    """ Wrapper for widgets with a value() method. This includes:
+        * QSlider
+        * QSpinBox
+        * QDoubleSpinBox
+        * QProgressBar
+        * QScrollBar
+        * QDial
+
+    Getting / setting this property calls value() / setValue()
+    """
     def getter(self, widget):
         return widget.value()
 

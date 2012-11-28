@@ -3,34 +3,37 @@ qtpy
 
 A pythonic interface to PyQt4
 
+Most widgets manage some piece of state (for example, a check box represents some boolean property, a combo box represents a list of items, etc.). Qt provides methods to get and set this state, but they are somewhat verbose:
+
+    furnace_on = furnace.thermostat_power_checkbox.isChecked()
+    furnace.thermostat_power_checkbox.setChecked(True)
+    
+qtpy provides wrappers for the most common pieces of widget state. It lets you define state properties, leading to simpler code that looks like this:
+
+    furnace_on = furnace.power
+    furnace.power = True
 
 Basic Usage
 ===========
 
-The objects in qtpy are descriptors that wrap around specific Qt
-widgets, and provide a simple property-like interface to the most frequently used widget states. Here's the basic usage pattern:
+Here's the basic usage pattern:
 
 ```
-class AwesomeToggle(QWidget):
-      awesome = qtpy.ButtonProperty('_awesome')
-      
-  	  def __init__(self, parent=None):
-  	      super(AwesomeToggle, self).__init__(parent)
-          layout = QHBoxLayout()
-	      label = QLabel("Awesome on?")
-	      self._awesome = QCheckBox()
+class Furnace(QWidget):
+	power = qtpy.ButtonProperty('thermostat_power_checkbox')
+	
+	def __init__(self, parent=None):
+	    super(Furnace, self).__init__(parent)
+	    self.thermostat_power_checkbox = QCheckBox()
+	   	...other widgets ...
+```	   		   
 
-	      layout.addWidget(label)
-	      layout.addWidget(self._awesome)
-	      self.setLayout(layout)
-```
+Here, `power` is a qtpy wrapper around the `Furnace.thermostat_power_checkbox`
+widget. The `ButtonProperty` behaves like a boolean property that reflects the check state of the widget::
 
-Here, `awesome` is a qtpy wrapper around the `AwesomeToggle._awesome`
-check box widget The `ButtonProperty` behaves like a boolean value that reflects the check state of the widget::
-
-      at = AwesomeToggle()
-      at.awesome = True  # equivalent to at._awesome.setChecked(True)
-      assert at.awesome  # equivalent to assert qt._awesome.isChecked()
+      f = Furnace()
+      f.power         # equivalent to f.thermostat_power_checkbox.isChecked()
+      f.power = True  # equivalent to f.thermostat_power_checkbox.setChecked(True)
 
 Note that qtpy wrappers are defined at the class level (i.e. outside of `__init__`), and reference the wrapped widget by name. Normal dot syntax can be used to reference nested widgets. For example:
 
